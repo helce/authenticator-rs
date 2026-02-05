@@ -51,6 +51,8 @@ fn main() {
         "ioctl_loongarch64.rs"
     } else if cfg!(target_arch = "e2k") {
         "ioctl_e2k.rs"
+    } else if cfg!(all(target_arch = "sparc64", target_endian = "big")) {
+        "ioctl_sparc64.rs"
     } else {
         panic!("architecture not supported");
     };
