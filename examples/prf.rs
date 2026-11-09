@@ -45,6 +45,7 @@ fn main() {
         "hmac-secret",
         "Return hmac-secret outputs instead of prf outputs (i.e., do not prefix and hash the inputs)",
     );
+    opts.optflag("l", "logging", "Active request/response logging");
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => panic!("{}", f.to_string()),
@@ -93,12 +94,16 @@ fn main() {
     println!("Asking a security key to register now...");
     let mut chall_bytes = [0u8; 32];
     thread_rng().fill_bytes(&mut chall_bytes);
+    let do_logging = matches.opt_present("logging");
 
     let (status_tx, status_rx) = channel::<StatusUpdate>();
     thread::spawn(move || loop {
         match status_rx.recv() {
             Ok(StatusUpdate::InteractiveManagement(..)) => {
                 panic!("STATUS: This can't happen when doing non-interactive usage");
+            }
+            Ok(StatusUpdate::NoDevicesFound) => {
+                println!("STATUS: No device found. Please connect one!");
             }
             Ok(StatusUpdate::SelectDeviceNotice) => {
                 println!("STATUS: Please select a device by touching one of them.");
@@ -151,6 +156,13 @@ fn main() {
             }
             Ok(StatusUpdate::LargeBlobData(..)) => {
                 panic!("Unexpected large blob data request")
+            }
+            Ok(StatusUpdate::RequestLogging(dir, msg)) => {
+                if do_logging {
+                    println!("{dir:?} -> ");
+                    println!("    {msg}");
+                    println!("--------------------------------------");
+                }
             }
             Err(RecvError) => {
                 println!("STATUS: end");

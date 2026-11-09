@@ -51,6 +51,7 @@ fn main() {
     opts.optflag("s", "hmac_secret", "With hmac-secret");
     opts.optflag("h", "help", "print this help menu");
     opts.optflag("f", "fallback", "Use CTAP1 fallback implementation");
+    opts.optflag("l", "logging", "Active request/response logging");
     opts.optopt(
         "u",
         "uv",
@@ -106,9 +107,13 @@ fn main() {
     let mut chall_bytes = [0u8; 32];
     thread_rng().fill_bytes(&mut chall_bytes);
 
+    let do_logging = matches.opt_present("logging");
     let (status_tx, status_rx) = channel::<StatusUpdate>();
     thread::spawn(move || loop {
         match status_rx.recv() {
+            Ok(StatusUpdate::NoDevicesFound) => {
+                println!("STATUS: No device found. Please connect one!");
+            }
             Ok(StatusUpdate::InteractiveManagement(..)) => {
                 panic!("STATUS: This can't happen when doing non-interactive usage");
             }
@@ -163,6 +168,13 @@ fn main() {
             }
             Ok(StatusUpdate::LargeBlobData(_, _)) => {
                 panic!("Unexpected large blob data request")
+            }
+            Ok(StatusUpdate::RequestLogging(dir, msg)) => {
+                if do_logging {
+                    println!("{dir:?} -> ");
+                    println!("   {msg}");
+                    println!("--------------------------------------");
+                }
             }
             Err(RecvError) => {
                 println!("STATUS: end");
